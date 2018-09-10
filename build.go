@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"log"
-	)
+)
 
 var (
 	upxLinuxUrl = "http://github.com/upx/upx/releases/download/v3.95/upx-3.95-win64.zip"
@@ -20,7 +20,7 @@ var (
 type Info struct {
 	FilePath   *string
 	Output *string
-	UpxUrl     string
+	UpxUrl     *string
 	UpxName    string
 	ExeFile    string
 	HomePath   string
@@ -97,6 +97,7 @@ func main() {
 	log.SetPrefix("[build] ")
 	info.Output = flag.String("o", "", "需要编译后文件输出路径")
 	info.FilePath = flag.String("f", "", "需要编译的文件路径")
+	info.UpxUrl = flag.String("upx", upxLinuxUrl, "upx下载地址")
 	info.HomePath = homeWindows()
 	info.upxPath = filepath.Join(info.HomePath, "upx")
 	flag.Parse()
@@ -127,7 +128,6 @@ func main() {
 			f.Write([]byte(d))
 			f.Close()
 			unzip("upx.zip", info.upxPath)
-			err = os.RemoveAll(filepath.Join(info.upxPath, "upx.zip"))
 			os.Rename(filepath.Join(info.upxPath, "upx"), filepath.Join(info.upxPath, "upx.exe"))
 			info.upxPath = filepath.Join(info.upxPath, "upx.exe")
 			log.Println("unzippend complete, UPX file path: ", info.upxPath)
@@ -138,30 +138,36 @@ func main() {
 	file = strings.Replace(file, ".go", "", 1)
 	args := []string{"build", "-ldflags", `-s -w`}
 	if *info.Output != ""{
-		path, fileName := filepath.Split(*info.Output)
-		if fileName == ""{
-			fileName = file
+		//path, fileName := filepath.Split(*info.Output)
+		//if fileName == ""{
+		//	fileName = file
+		//}
+		output := *info.Output
+		_f, err := os.Stat(*info.Output)
+		if err==nil{
+			if _f.IsDir(){
+				output = filepath.Join(output, file)
+			}
 		}
-		output := filepath.Join(path, fileName)
 		info.Output = &output
+		args = append(args, "-o")
 		args = append(args, output)
+
 	}else{
 		p := filepath.Join(old_path, file)
 		info.Output = &p
 		args = append(args, "-o")
 		args = append(args, *info.Output)
-		args = append(args, *info.FilePath)
 	}
+	args = append(args, *info.FilePath)
 	execmd := exec.Command("go", args...)
-	var d []string
-	Environ := os.Environ()
-	d = append(d, Environ...)
-	d = append(d, "GOHOSTOS=linux")
-	d = append(d, "CGO_ENABLED=0")
-	d = append(d, "GOARCH=amd64")
-	execmd.Env = d
+	os.Setenv("GOOS", "linux")
+	//os.Setenv("CGO_ENABLED", "0")
+	os.Setenv("GOARCH", "amd64")
+	execmd.Env = os.Environ()
 	err = execmd.Run()
 	if err != nil {
+		panic(strings.Join(args, " "))
 		log.Println(err)
 		return
 	}
@@ -175,7 +181,7 @@ func main() {
 	}
 	// 压缩
 	cmd := exec.Command(info.upxPath, *info.Output)
-	cmd.Env = Environ
+	cmd.Env = os.Environ()
 	err = cmd.Run()
 	if err != nil {
 		log.Println(err)
