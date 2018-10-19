@@ -93,6 +93,7 @@ func homeWindows() string {
 
 func main() {
 	// unzip
+	a :="fdsaf"
 	info := &Info{}
 	log.SetPrefix("[build] ")
 	info.Output = flag.String("o", "", "需要编译后文件输出路径")
@@ -134,14 +135,10 @@ func main() {
 		}
 	}
 	log.Println("starting Compiled")
-	old_path, file := filepath.Split(*info.FilePath)
+	oldPath, file := filepath.Split(*info.FilePath)
 	file = strings.Replace(file, ".go", "", 1)
 	args := []string{"build", "-ldflags", `-s -w`}
 	if *info.Output != ""{
-		//path, fileName := filepath.Split(*info.Output)
-		//if fileName == ""{
-		//	fileName = file
-		//}
 		output := *info.Output
 		_f, err := os.Stat(*info.Output)
 		if err==nil{
@@ -154,7 +151,7 @@ func main() {
 		args = append(args, output)
 
 	}else{
-		p := filepath.Join(old_path, file)
+		p := filepath.Join(oldPath, file)
 		info.Output = &p
 		args = append(args, "-o")
 		args = append(args, *info.Output)
@@ -162,13 +159,11 @@ func main() {
 	args = append(args, *info.FilePath)
 	execmd := exec.Command("go", args...)
 	os.Setenv("GOOS", "linux")
-	//os.Setenv("CGO_ENABLED", "0")
 	os.Setenv("GOARCH", "amd64")
 	execmd.Env = os.Environ()
-	err = execmd.Run()
-	if err != nil {
-		panic(strings.Join(args, " "))
-		log.Println(err)
+
+	if mes, err := execmd.CombinedOutput(); err != nil{
+		log.Println("\n"+ string(mes))
 		return
 	}
 	f, err := os.Stat(*info.Output)
@@ -182,12 +177,10 @@ func main() {
 	// 压缩
 	cmd := exec.Command(info.upxPath, *info.Output)
 	cmd.Env = os.Environ()
-	err = cmd.Run()
-	if err != nil {
-		log.Println(err)
+	if msg, err := cmd.CombinedOutput(); err != nil{
+		log.Println("\n"+ string(msg))
 		return
 	}
-
 	f, err = os.Stat(*info.Output)
 	if err == nil{
 		fileSize := float64(f.Size())  / 1024.0 / 1024.0
