@@ -93,7 +93,6 @@ func homeWindows() string {
 
 func main() {
 	// unzip
-	a :="fdsaf"
 	info := &Info{}
 	log.SetPrefix("[build] ")
 	info.Output = flag.String("o", "", "需要编译后文件输出路径")
